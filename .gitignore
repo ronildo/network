@@ -1,0 +1,46 @@
+# --- Terraform / OpenTofu ---
+# Local state — contains every resource ID, often plaintext attributes
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl.bak
+crash.log
+crash.*.log
+
+# Variable files commonly hold secrets (API keys, Wi-Fi passphrases)
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+
+# Override files — often used locally to tweak without committing
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plan output — can contain sensitive values
+*.tfplan
+*.tfplan.*
+tf.plan
+
+# --- Secrets / env ---
+.env
+.env.*
+.envrc
+!.envrc.example
+*.pem
+*.key
+
+# --- 1Password ---
+# The template (with op:// references) is safe to commit.
+# Any locally-resolved variant (after `op inject`, for instance) is not.
+op-env
+op-env.resolved
+*.op.env
+
+# --- Editor / OS ---
+.DS_Store
+.vscode/
+.idea/
+*.swp

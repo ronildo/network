@@ -1,0 +1,27 @@
+# DEPRECATED for daily use. Kept as a fallback for people who prefer
+# file-based secrets (or who don't have 1Password).
+#
+# **Preferred path: 1Password.** See README.md → "1Password setup" and
+# the `op-env.template` file. Wi-Fi passphrases are pulled from 1P via
+# `op run`, so you don't need this file at all.
+#
+# If you still want to use it: copy to `terraform.tfvars` (which is
+# gitignored) and fill in real values. Don't commit it.
+
+# trusted_wifi_passphrase        = "CHANGE-ME-long-random-string-for-trusted-wifi"
+# iot_wifi_passphrase            = "CHANGE-ME-different-long-random-string-for-iot"
+# iot_quarantine_wifi_passphrase = "CHANGE-ME-different-long-random-string-for-quarantine"
+# guest_wifi_passphrase          = "CHANGE-ME-different-long-random-string-for-guests"
+# work_wifi_passphrase           = "CHANGE-ME-different-long-random-string-for-work-laptop"
+
+# Optional subnet/VLAN overrides — only set if defaults clash with your
+# environment. Convention: 10.<vlan>.0.0/24
+# trusted_subnet         = "10.1.0.1/24"
+# iot_vlan_id            = 20
+# iot_subnet             = "10.20.0.1/24"
+# iot_quarantine_vlan_id = 21
+# iot_quarantine_subnet  = "10.21.0.1/24"
+# guest_vlan_id          = 30
+# guest_subnet           = "10.30.0.1/24"
+# work_vlan_id           = 40
+# work_subnet            = "10.40.0.1/24"

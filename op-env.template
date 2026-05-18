@@ -1,0 +1,37 @@
+# 1Password secret references for the UDR-7 network config.
+#
+# This file is SAFE TO COMMIT — it contains `op://` references, not the
+# actual values. The 1Password CLI (`op`) resolves them at runtime.
+#
+# How to use:
+#   1. Make sure 1Password 8 desktop app is installed and Touch ID is on.
+#   2. Install the CLI:        brew install 1password-cli
+#   3. Enable the CLI/app integration:
+#        1Password app → Settings → Developer → "Integrate with 1Password CLI"
+#      That gives you biometric unlock for every `op` command (no signins).
+#   4. Create a 1Password item that matches the references below
+#      (instructions in README.md → "1Password setup").
+#   5. Run tofu via `op run`:
+#        op run --env-file=op-env.template -- tofu plan -out tf.plan
+#        op run --env-file=op-env.template -- tofu apply tf.plan
+#
+# Change the vault name ("Homelab") and item name ("UDR-7") below if you
+# use different ones. The field names on the right side of the `op://`
+# references must match the fields you set up in the 1Password item.
+
+# --- UDR-7 controller --------------------------------------------------
+UNIFI_API="op://Homelab/UDR-7/api_url"
+UNIFI_API_KEY="op://Homelab/UDR-7/api_key"
+
+# Non-secret config — could go anywhere; kept here so `op run` is the
+# single source of truth for the run environment.
+UNIFI_INSECURE=true
+UNIFI_RESPONSE_CACHING=true
+UNIFI_SITE=default
+
+# --- Wi-Fi passphrases (Terraform variables) ---------------------------
+TF_VAR_trusted_wifi_passphrase="op://Homelab/UDR-7/wifi_trusted_passphrase"
+TF_VAR_iot_wifi_passphrase="op://Homelab/UDR-7/wifi_iot_passphrase"
+TF_VAR_iot_quarantine_wifi_passphrase="op://Homelab/UDR-7/wifi_iot_quarantine_passphrase"
+TF_VAR_guest_wifi_passphrase="op://Homelab/UDR-7/wifi_guest_passphrase"
+TF_VAR_work_wifi_passphrase="op://Homelab/UDR-7/wifi_work_passphrase"
