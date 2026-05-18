@@ -52,17 +52,19 @@ the NAS, and a verification suite.
 
 ```
 .
-├── versions.tf              # Terraform + Terrifi provider versions
-├── providers.tf             # Reads UNIFI_* env vars; no secrets in file
-├── variables.tf             # Subnets, VLAN IDs, SSIDs, passphrases
-├── terraform.tfvars.example # Copy → terraform.tfvars, fill in secrets
-├── networks.tf              # 4 VLANs
-├── wlans.tf                 # 4 SSIDs, one per VLAN
-├── firewall_zones.tf        # 4 zones, one per VLAN
-├── firewall_policies.tf     # 9 BLOCK policies + optional HA exception
-├── outputs.tf               # Network/zone IDs for follow-up imports
-├── UI-CHECKLIST.md          # Everything that has to happen in the UI
-└── README.md                # this file
+├── README.md                    # this file
+├── UI-CHECKLIST.md               # Everything that has to happen in the UI
+└── infra/                        # all OpenTofu config — run tofu from here
+    ├── versions.tf               # Terraform + Terrifi provider versions
+    ├── providers.tf              # Reads UNIFI_* env vars; no secrets in file
+    ├── variables.tf              # Subnets, VLAN IDs, SSIDs, passphrases
+    ├── terraform.tfvars.example  # Copy → terraform.tfvars, fill in secrets
+    ├── op-env.template           # 1Password op:// references (safe to commit)
+    ├── networks.tf               # 4 VLANs
+    ├── wlans.tf                  # 4 SSIDs, one per VLAN
+    ├── firewall_zones.tf         # 4 zones, one per VLAN
+    ├── firewall_policies.tf      # 9 BLOCK policies + optional HA exception
+    └── outputs.tf                # Network/zone IDs for follow-up imports
 ```
 
 ## Bootstrap, end to end
@@ -99,8 +101,8 @@ go install github.com/alexklibisz/terrifi/cmd/terrifi@latest
 ### 1Password setup (one-time)
 
 All secrets live in a single 1Password item. The repo only stores
-*references* to fields, never values — that's `op-env.template` in this
-directory, which is safe to commit.
+*references* to fields, never values — that's `infra/op-env.template`,
+which is safe to commit.
 
 1. In 1Password, create a vault called **Homelab** (or pick an existing
    one — just remember to update the vault name in `op-env.template`).
@@ -134,7 +136,7 @@ accordingly (find-replace `Homelab` and `UDR-7`).
 ### Each time you run it
 
 ```sh
-cd ~/developer/network
+cd ~/developer/network/infra
 
 # Sanity check the provider can reach the controller.
 op run --env-file=op-env.template -- terrifi check-connection
@@ -159,8 +161,8 @@ locked since last use.
 like this in your `.zshrc`:
 
 ```sh
-alias tofu-net='op run --env-file=$HOME/developer/network/op-env.template --'
-# usage: tofu-net tofu plan -out tf.plan
+alias tofu-net='op run --env-file=$HOME/developer/network/infra/op-env.template --'
+# usage: run from ~/developer/network/infra — e.g. tofu-net tofu plan -out tf.plan
 ```
 
 After the first apply, do all of [Phase 3 in UI-CHECKLIST.md](./UI-CHECKLIST.md#phase-3--finishing-touches-ui-only):
@@ -201,9 +203,9 @@ Almost everything is in `variables.tf` or one of the resource files.
 
 ## Disaster recovery
 
-State lives in `terraform.tfstate` (gitignored). Two options:
+State lives in `infra/terraform.tfstate` (gitignored). Two options:
 
-1. **Local + NAS backup**: `cp terraform.tfstate $NAS_MOUNT/backups/network/terraform.tfstate.$(date +%F)`
+1. **Local + NAS backup**: `cp infra/terraform.tfstate $NAS_MOUNT/backups/network/terraform.tfstate.$(date +%F)`
    after every apply. Pairs naturally with the UDR-7 config backups
    going to the same NAS.
 2. **Remote state** (more robust): point `terraform { backend "s3" ... }`
