@@ -15,7 +15,7 @@ resource "terrifi_wlan" "trusted" {
   wpa3_support    = var.enable_wpa3_transition
   wpa3_transition = var.enable_wpa3_transition
   wpa_mode        = "wpa2"
-  hide_ssid       = true
+  hide_ssid       = false # iOS fails to associate with hidden + WPA3-transition
 }
 
 # IoT: smart speakers, smart plugs, TVs, doorbells you trust.
