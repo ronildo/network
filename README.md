@@ -60,10 +60,10 @@ the NAS, and a verification suite.
     ├── variables.tf              # Subnets, VLAN IDs, SSIDs, passphrases
     ├── terraform.tfvars.example  # Copy → terraform.tfvars, fill in secrets
     ├── op-env.template           # 1Password op:// references (safe to commit)
-    ├── networks.tf               # 4 VLANs
-    ├── wlans.tf                  # 4 SSIDs, one per VLAN
-    ├── firewall_zones.tf         # 4 zones, one per VLAN
-    ├── firewall_policies.tf      # 9 BLOCK policies + optional HA exception
+    ├── networks.tf               # 5 VLANs
+    ├── wlans.tf                  # 5 SSIDs, one per VLAN
+    ├── firewall_zones.tf         # 5 zones, one per VLAN
+    ├── firewall_policies.tf      # 17 BLOCK policies + optional HA exception
     └── outputs.tf                # Network/zone IDs for follow-up imports
 ```
 
