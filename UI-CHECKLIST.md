@@ -1,6 +1,6 @@
 # UDR-7 manual UI steps
 
-The Terrifi Terraform provider covers networks, Wi-Fi, and the zone-based
+The terrifi Terraform provider covers networks, Wi-Fi, and the zone-based
 firewall. Everything else has to be done in the UniFi UI — either because
 the provider doesn't expose it, or because it has to happen once at the
 start before the API even exists.
@@ -64,8 +64,8 @@ New Zone-Based Firewall**.
 
 This is a one-way migration. It creates the default `Internal` /
 `External` / `VPN` zones and turns on the v2 firewall API that Terraform
-uses. Without this step, every `terrifi_firewall_zone` / `terrifi_firewall_policy`
-apply will 400-error.
+uses. Without this step, every `terrifi_firewall_zone` /
+`terrifi_firewall_policy` apply will 400-error.
 
 ### 5. Create the local API admin and generate an API key `[required for terraform]`
 UI → Settings → Admins & Users → **Admins** → Create New Admin.
@@ -109,50 +109,72 @@ is done.
 
 ---
 
-## Phase 2 — Now run Terraform
+## Phase 2 — Run Terraform
 
-See `README.md` for the exact commands. Come back here when `tofu apply`
-finishes cleanly.
+See `README.md` for the exact commands. Typical invocation:
+
+```sh
+op run --env-file=infra/op-env.template -- tofu -chdir=infra apply
+```
+
+Every apply also runs `infra/post-tofu-apply.sh` via the
+`terraform_data.post_apply_fixups` resource (see `infra/post_apply.tf`).
+That hook sets the one WLAN field terrifi doesn't expose
+(`enhanced_iot=false`) — without it, off-subnet hosts can't reach IoT
+wireless clients and HomeKit silently breaks. You should not need to run
+the script by hand; just always invoke `tofu apply` via `op run`.
+
+Come back to Phase 3 when `tofu apply` finishes cleanly.
 
 ---
 
-## Phase 3 — Finishing touches (UI only)
+## Phase 3 — UI-only configuration (after Terraform applies)
 
-### 7. Turn on the IDS/IPS engine
-UI → Settings → Security → **Threat Management** → set to **Detect and Block**.
+### 7. Enable IDS/IPS (recommended, optional)
+UI → Settings → Security → look for **Detections** / **Threat
+Detection** / **Threat Management** (the exact name shifts between
+firmware versions) → set to **Detect and Block**.
 
-The UDR-7 advertises 2.3 Gbps IDS/IPS throughput, which is faster than
-almost any home internet connection, so the performance hit is negligible.
+The UDR-7 advertises 2.3 Gbps IDS/IPS throughput, faster than almost any
+home internet connection, so the performance hit is negligible.
 
-Pick the category set:
-- **Recommended for "balanced":** turn on *Emerging Threats*,
-  *Malware-CnC*, *Exploit-Kit*, *Hacking*. Leave the high-noise
-  categories (*Chat*, *Games*) off.
+Recommended category set for a "balanced" posture: *Emerging Threats*,
+*Malware-CnC*, *Exploit-Kit*, *Hacking*. Leave high-noise categories
+(*Chat*, *Games*) off. If a category turns out to false-positive on
+home-network traffic, switch *that one* back to detect-only rather than
+disabling the whole engine.
 
-### 8. Enable mDNS Reflector between Trusted and IoT
-UI → Settings → Networks → **Multicast DNS Reflector** → enable, and pick
-the networks that need to see each other's mDNS broadcasts.
+### 8. Enable Gateway mDNS Proxy between Trusted and IoT
+UI → Settings → Networks → **Gateway mDNS Proxy** → set to **Custom**,
+then under "VLAN Scope" pick the networks that need to see each other's
+mDNS broadcasts. (Older firmwares called this "Multicast DNS Reflector"
+— same feature.)
 
-For your setup, you want **Trusted ↔ IoT** specifically:
+For your setup, you want **Trusted + IoT** specifically:
 - Home Assistant integrations that auto-discover devices (HomeKit, Cast,
-  Sonos, ESPHome, Shelly) rely on mDNS. Without the reflector, your IoT
+  Sonos, ESPHome, Shelly) rely on mDNS. Without the proxy, your IoT
   devices live on a different VLAN from HA and discovery silently fails.
 - Casting from your phone (Trusted) to a Chromecast or Sonos (IoT)
   needs the same.
 
-Leave **Guest**, **IoT-Quarantine**, and **Work** OFF. Visitors don't
-need to see your printer; quarantined cameras don't need to be
+Do **NOT** pick "Auto" — that bridges every VLAN, which defeats the
+isolation of Guest, IoT-Quarantine, and Work. Leave **Service Scope** on
+**All** unless you have a specific reason to narrow it.
+
+Leave **Guest**, **IoT-Quarantine**, and **Work** unticked. Visitors
+don't need to see your printer; quarantined cameras don't need to be
 discoverable; the work MacBook shouldn't see *any* of your home stuff,
 discovery included.
 
 ### 9. Tailscale: keep your subnet router happy
-You already have Tailscale running on your Linux homelab host, advertising
-the LAN subnet. The UDR-7 doesn't need much from you to support it, but:
+You already have Tailscale running on your Linux homelab host,
+advertising the LAN subnet. The UDR-7 doesn't need much from you to
+support it, but:
 
-- **No port forward is required.** Tailscale uses outbound NAT traversal.
-  If you ever feel tempted to forward a port "to make Tailscale work,"
-  stop — that's a sign the host's outbound traffic is being blocked,
-  not that you need an inbound rule.
+- **No port forward is required.** Tailscale uses outbound NAT
+  traversal. If you ever feel tempted to forward a port "to make
+  Tailscale work," stop — that's a sign the host's outbound traffic is
+  being blocked, not that you need an inbound rule.
 - **Static IP for the Tailscale host.** UI → Settings → Networks →
   Default → DHCP → Static Leases. Pin the homelab host to e.g.
   `10.1.0.10`. This means the same IP shows up in `tailscale status`
@@ -173,8 +195,8 @@ the LAN subnet. The UDR-7 doesn't need much from you to support it, but:
   not set up. Two overlapping VPNs is more attack surface, not less.
 
 ### 10. Schedule UDR-7 config backups to the NAS
-UI → System → Backups → **Auto Backup** → enable, then **Backup Storage** →
-add **SMB** (or NFS, whichever your NAS prefers).
+UI → System → Backups → **Auto Backup** → enable, then **Backup
+Storage** → add **SMB** (or NFS, whichever your NAS prefers).
 
 - Point it at a folder on the NAS dedicated to network backups, e.g.
   `\\nas\backups\udr7`.
@@ -213,8 +235,8 @@ switch port to the Work VLAN, plug the work MacBook into it.
 
 This is simpler than the "share one cable" approaches we'd need without
 the switch — no macOS VLAN tagging, no profile-swap dance. The personal
-computer stays on its existing port; the work MacBook gets its own; both
-can be plugged in simultaneously, each on its own VLAN.
+computer stays on its existing port; the work MacBook gets its own;
+both can be plugged in simultaneously, each on its own VLAN.
 
 **Setup (one-time):**
 
@@ -230,7 +252,8 @@ can be plugged in simultaneously, each on its own VLAN.
    Which port? Use a GbE port (1, 2, or 4) for the MacBook — typical
    work loads don't need 2.5 GbE, and you may want to keep port 3
    (the only non-uplink 2.5 GbE port) free for the NAS if it's not
-   already there. Don't touch port 5 — that's your uplink to the UDR-7.
+   already there. Don't touch port 5 — that's your uplink to the
+   UDR-7.
 
 3. **Confirm the uplink port is a trunk.** UI → UniFi Devices → USW
    Flex 2.5G 5 → Port 5 → profile should be `All` (or the
@@ -239,9 +262,9 @@ can be plugged in simultaneously, each on its own VLAN.
    anyway. If it's not, set the profile to `All`.
 
 4. **Plug in.** Work MacBook → USB-C-to-Ethernet adapter → the
-   `Work-Access` switch port. macOS DHCPs an address in `10.40.0.0/24`
-   and you're done. Verify in **System Settings → Network**: the
-   wired interface shows a `10.40.0.x` address.
+   `Work-Access` switch port. macOS DHCPs an address in
+   `10.40.0.0/24` and you're done. Verify in **System Settings →
+   Network**: the wired interface shows a `10.40.0.x` address.
 
 **If all 4 downlink ports are already in use:**
 
@@ -256,65 +279,127 @@ can be plugged in simultaneously, each on its own VLAN.
   you have a multi-monitor / wired-peripheral situation that needs
   the wired bandwidth).
 
-**Verification:**
-
-- Work MacBook on the `Work-Access` port: gets a `10.40.0.x` IP,
-  reaches the internet ✓
-- Work MacBook: `ping 10.1.0.10` (homelab) → no reply ✓
-- Work MacBook: `ping 10.1.0.1` (UDR-7 gateway from the *home* side) →
-  no reply ✓ (Work gets its own gateway `10.40.0.1`)
-- Personal computer on its existing switch port: still `10.1.0.x`,
-  unchanged ✓
-- Trusted laptop: `ping 10.40.0.x` (work MacBook) → no reply ✓
-  (the symmetric block in both directions)
-
 ### 13. Port forwards (only if you actually need them)
 UI → Settings → Security → **Port Forwarding**.
 
-**Default answer: don't.** Tailscale already gives you reachability from
-outside. Almost everything you'd want a port forward for — SSH to the
-homelab, the Home Assistant UI, the NAS, Frigate, whatever — is already
-on your tailnet.
+**Default answer: don't.** Tailscale already gives you reachability
+from outside. Almost everything you'd want a port forward for — SSH to
+the homelab, the Home Assistant UI, the NAS, Frigate, whatever — is
+already on your tailnet.
 
-If you genuinely need a forward (game server, public webhook receiver):
-- Forward to a fixed IP in the `Trusted` network. Never forward to an IoT
-  device.
+If you genuinely need a forward (game server, public webhook
+receiver):
+- Forward to a fixed IP in the `Trusted` network. Never forward to an
+  IoT device.
 - Restrict the **Source** field to a specific IP / CIDR if at all
-  possible. A wide-open forward is a much bigger risk than the Tailscale
-  alternative.
+  possible. A wide-open forward is a much bigger risk than the
+  Tailscale alternative.
 
-### 14. Wi-Fi PSK rotation reminder
-The Terraform config pulls passphrases from 1Password at apply time. To rotate:
+---
+
+## Phase 4 — Maintenance
+
+### 14. Wi-Fi PSK rotation
+The Terraform config pulls passphrases from 1Password at apply time.
+To rotate:
 
 1. In 1Password, open the `UDR-7` item and regenerate the relevant
    `wifi_*_passphrase` field (use 1P's password generator — 24 chars,
    no symbols if you want to type it on a TV remote).
-2. `op run --env-file=op-env.template -- tofu apply` — Terraform sees
-   the new value, pushes it to the controller.
+2. `op run --env-file=infra/op-env.template -- tofu apply` — Terraform
+   sees the new value and pushes it to the controller.
 3. Update your devices with the new passphrase from 1Password.
 
-Rotate **guest** at least every 6 months. Rotate **iot_quarantine** if you
-add a new no-name device. **Trusted** only needs rotation if you suspect
-the passphrase leaked.
+Rotation cadence:
+- **Guest**: every 6 months or after a party with a lot of devices on
+  the SSID.
+- **IoT-Quarantine**: whenever you add a new no-name device (the point
+  of this SSID is that you trust each device as little as possible).
+- **Work**: only if you suspect the passphrase leaked, or if your
+  employer requires periodic rotation.
+- **IoT**: only if you suspect the passphrase leaked. Rotating breaks
+  every smart bulb / plug / sensor until you re-onboard them.
+- **Trusted**: only if you suspect the passphrase leaked.
 
-### 15. Verify it's all working
-- `https://10.1.0.1` (Trusted laptop): full UI access ✓
-- Trusted laptop → homelab host (`10.1.0.10`) and NAS: reachable ✓
-- Phone on the IoT SSID: can reach the internet, **cannot** reach
-  `10.1.0.x` ✓
-- Home Assistant (Trusted) reaches its smart bulbs / plugs (IoT) ✓
-- HomeKit / Cast / Sonos discovery on Trusted finds IoT devices ✓
-  (if not, double-check step 8 mDNS Reflector covers Trusted ↔ IoT)
-- Phone on the Guest SSID: can reach the internet, **cannot** reach
-  `10.1.0.x`, `10.20.0.x`, `10.21.0.x` ✓
-- Camera on IoT-Quarantine SSID: **cannot** reach the internet ✓
+---
+
+## Phase 5 — Verification
+
+### 15. Confirm the network is working as designed
+
+Connectivity (what *should* work):
+- `https://10.1.0.1` from the Trusted laptop → full UI access
+- Trusted laptop → homelab (`10.1.0.10`) and NAS → reachable
+- Home Assistant (Trusted) → IoT smart bulbs / plugs → reachable
+- HomeKit / Cast / Sonos discovery on Trusted finds IoT devices (if
+  not, double-check step 8 mDNS Proxy covers Trusted + IoT)
+- Phone off-network (cellular + Tailscale on) → reaches `10.1.0.1`,
+  homelab, NAS via the subnet router
+
+Isolation (what *should not* work):
+- Phone on IoT SSID → can reach the internet, **cannot** reach
+  `10.1.0.x`
+- Phone on Guest SSID → can reach the internet, **cannot** reach
+  `10.1.0.x` / `10.20.0.x` / `10.21.0.x`
+- Camera on IoT-Quarantine SSID → **cannot** reach the internet
   (use a watch-only test camera; check the UDR-7 traffic chart shows
   no outbound for its IP)
-- Phone off-network (cellular, Tailscale on): reaches `10.1.0.1`,
-  the homelab, and the NAS through the subnet router ✓
-- Work MacBook on the Work SSID (or its dedicated wired port): can
-  reach the internet, **cannot** ping `10.1.0.x` / `10.20.0.x` /
-  `10.21.0.x` / `10.30.0.x` ✓
-- Trusted laptop: **cannot** ping the work MacBook's `10.40.0.x` IP ✓
+- Work MacBook on Work SSID or its dedicated wired port → can reach
+  the internet, **cannot** ping `10.1.0.x` / `10.20.0.x` /
+  `10.21.0.x` / `10.30.0.x`
+- Trusted laptop → cannot ping the work MacBook's `10.40.0.x` IP
   (the asymmetry from Trusted → IoT is *not* present for Work — this
   is the deliberate "fully isolated, both directions" behavior)
+
+Trusted → IoT TCP path (where the firewall stateful-return fix lives,
+see Troubleshooting):
+- From the Trusted laptop: `nc -z -w 3 -v 10.20.0.218 80` (or any IP
+  of a real IoT device) → **"Connection refused"** is the success
+  state. "Operation timed out" means the cross-VLAN return path is
+  broken; see Troubleshooting.
+- HomeKit thermostat / smart switch / etc. in the iOS Home app: still
+  responsive after closing and reopening the app. If it briefly works
+  on app open then goes to "No Response" within seconds, the
+  stateful-return fix has regressed.
+
+---
+
+## Troubleshooting
+
+### Cross-VLAN traffic dies after a `tofu apply` (HomeKit "No Response", IoT devices unreachable from Trusted)
+Re-run the apply via `op run`:
+
+```sh
+op run --env-file=infra/op-env.template -- tofu -chdir=infra apply
+```
+
+`terraform_data.post_apply_fixups` will re-assert `enhanced_iot=false`
+on the IoT WLAN. The declarative firewall fields
+(`create_allow_respond`, `connection_state_type`,
+`connection_states`) are already in HCL, so terrifi keeps them right
+on every apply — but if you ever see drift on those, the GOTCHA #2
+block at the top of `infra/firewall_policies.tf` explains why each
+field is set the way it is.
+
+If the apply itself is clean and the symptom persists:
+1. Confirm the AP is reachable: `ping 10.20.0.1` from Trusted → should
+   succeed.
+2. Confirm the actual IoT device is alive on its own subnet (UI →
+   Client Devices → look at "24H Internet Activity" — non-zero means
+   it's online and talking to the cloud).
+3. TCP probe: `nc -z -w 3 -v <iot-ip> 80` from Trusted. "Connection
+   refused" = network path works, the device just isn't serving that
+   port (this is the success state for HomeKit thermostats — they
+   only listen on the HAP port). "Operation timed out" = network path
+   broken, look at `infra/firewall_policies.tf` GOTCHA #2.
+
+### Where things live (so you don't have to remember from scratch)
+- VLANs / Wi-Fi / firewall zones / firewall policies: `infra/*.tf`
+- The "why these specific fields are set" notes: comment blocks at
+  the top of `infra/firewall_policies.tf` and around the IoT WLAN in
+  `infra/wlans.tf`
+- The API-side workaround (only for `enhanced_iot`):
+  `infra/post-tofu-apply.sh`, auto-run by
+  `infra/post_apply.tf`
+- The 1Password item layout: `README.md` → "1Password setup"
+- These UI-only steps: this file
