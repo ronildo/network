@@ -3,7 +3,8 @@
     "allow": [
       "Bash(bash /Users/roni/.claude/statusline-command.sh)",
       "Bash(CLAUDE_STATUSLINE_NOCOLOR=1 bash -c 'echo \"{\\\\\"model\\\\\":{\\\\\"display_name\\\\\":\\\\\"Claude Opus 4.7\\\\\"},\\\\\"workspace\\\\\":{\\\\\"current_dir\\\\\":\\\\\"/Users/roni/developer/network\\\\\"},\\\\\"context_window\\\\\":{\\\\\"used_percentage\\\\\":18,\\\\\"total_input_tokens\\\\\":36000,\\\\\"context_window_size\\\\\":200000},\\\\\"cost\\\\\":{\\\\\"total_cost_usd\\\\\":1.23,\\\\\"total_lines_added\\\\\":0,\\\\\"total_lines_removed\\\\\":0}}\" | bash /Users/roni/.claude/statusline-command.sh')",
-      "Bash(op run *)"
+      "Bash(op run *)",
+      "Bash(python3 *)"
     ]
   }
 }
